@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Mapping Simulator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group label {
+            width: 200px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .input-group input, .input-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+
+        .highlight {
+            background-color: #ccb7ff;
+        }
+
+        .virtual-color {
+            color: #880808;
+            font-weight: bold;
+        }
+
+        .physical-color {
+            color: #0096FF;
+            font-weight: bold;
+        }
+
+        .info-text {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #e8f4fc;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+        }
+
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            text-align: center;
+        }
+
+        .conversion-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .input-group label {
+                width: auto;
+                margin-bottom: 5px;
+            }
+            
+            .input-group input, .input-group select {
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Memory Mapping Simulator</h1>
+    
+    <div class="container">
+        <h2>Configuration</h2>
+        <div class="input-group">
+            <label for="virtual_size">Virtual Memory Size (KB):</label>
+            <input type="number" id="virtual_size" placeholder="Enter size in KB" min="1" value="2">
+        </div>
+        
+        <div class="input-group">
+            <label for="page_size">Page Size (KB):</label>
+            <input type="number" id="page_size" placeholder="Enter size in KB" min="1" value="1">
+        </div>
+        
+        <div class="input-group">
+            <label for="selectAlg">Conversion Direction:</label>
+            <select id="selectAlg">
+                <option value="virtual_to_phys">Virtual to Physical</option>
+                <option value="phys_to_virtual">Physical to Virtual</option>
+            </select>
+        </div>
+        
+        <div class="button-group">
+            <button id="create_bt" onclick="take_data('create')">Create Mapping Table</button>
+            <button id="submit_present_bits_bt" style="display: none;" onclick="take_data('submit_present_bits')">Submit Present Bits</button>
+            <button id="submit_physical_bits_bt" style="display: none;" onclick="take_data('submit_physical_bits')">Submit Physical Bits</button>
+            <button id="done_bt" style="display: none;" onclick="take_data('done')">Done</button>
+        </div>
+        
+        <div id="headerTwo" class="info-text"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Page Table</h2>
+        <table id="myTable"></table>
+    </div>
+    
+    <div class="container">
+        <h2>Address Conversion</h2>
+        <table id="myTable1"></table>
+        <div class="button-group">
+            <button id="convert_bt" style="display: none;" onclick="take_data('convert')">Convert Address</button>
+        </div>
+    </div>
+
+    <script>
+        class MemoryMap {
+            constructor(virtualIndex = 0, physicalIndex = 0, present = false) {
+                this.virtualIndex = virtualIndex;
+                this.physicalIndex = physicalIndex;
+                this.present = present;
+            }
+        }
+
+        // DOM Elements
+        const virtualSizeInput = document.getElementById("virtual_size");
+        const pageSizeInput = document.getElementById("page_size");
+        const algorithmSelect = document.getElementById("selectAlg");
+        const headerTwo = document.getElementById("headerTwo");
+        const createButton = document.getElementById("create_bt");
+        const submitPresentButton = document.getElementById("submit_present_bits_bt");
+        const submitPhysicalButton = document.getElementById("submit_physical_bits_bt");
+        const convertButton = document.getElementById("convert_bt");
+        const doneButton = document.getElementById("done_bt");
+        const pageTable = document.getElementById("myTable");
+        const conversionTable = document.getElementById("myTable1");
+
+        // Application state
+        let memoryMapArray = [];
+        let presentBitArray = [];
+        let maxPhysicalBitSize = 0;
+        let submitPresentBitsClicked = false;
+        
+        // Memory configuration
+        let virtualSize = 2;
+        let pageSize = 1;
+        let physicalSize = 1;
+        let selectedAlgorithm = "virtual_to_phys";
+        let totalBits = 0;
+        let indexBits = 0;
+        let offsetBits = 0;
+
+        // Constants
+        const COLUMNS = 3; // Virtual Index, Physical Address, Present Bit
+        const KB_TO_BYTES = 1024;
+
+        function initializeApplication() {
+            // Set initial values from inputs
+            virtualSize = Number(virtualSizeInput.value) * KB_TO_BYTES;
+            pageSize = Number(pageSizeInput.value) * KB_TO_BYTES;
+            selectedAlgorithm = algorithmSelect.value;
+            
+            // Calculate memory parameters
+            physicalSize = virtualSize / 2;
+            totalBits = Math.ceil(Math.log2(virtualSize));
+            offsetBits = Math.ceil(Math.log2(pageSize));
+            indexBits = totalBits - offsetBits;
+            
+            console.log(`Virtual Size: ${virtualSize}`);
+            console.log(`Page Size: ${pageSize}`);
+            console.log(`Physical Size: ${physicalSize}`);
+            console.log(`Total Bits: ${totalBits}`);
+            console.log(`Offset Bits: ${offsetBits}`);
+            console.log(`Index Bits: ${indexBits}`);
+        }
+
+        function validateInputs() {
+            if (virtualSize < pageSize) {
+                alert("Please select a Virtual Memory with larger size than the page!");
+                return false;
+            }
+            
+            if (virtualSize % 2 !== 0) {
+                alert("Please use a virtual size that is a multiple of 2!");
+                return false;
+            }
+            
+            if (virtualSize % pageSize !== 0) {
+                alert("Please use a Page Size that is a multiple of the Virtual Size!");
+                return false;
+            }
+            
+            return true;
+        }
+
+        function createMappingTable() {
+            // Clear existing table
+            pageTable.innerHTML = '';
+            
+            // Create header row
+            const headerRow = pageTable.insertRow();
+            headerRow.insertCell().textContent = "Virtual Page Index";
+            headerRow.insertCell().textContent = "Physical Page Index";
+            headerRow.insertCell().textContent = "Present Bit";
+            
+            // Initialize memory map array
+            memoryMapArray = [];
+            const pageCount = Math.pow(2, indexBits);
+            
+            for (let i = 0; i < pageCount; i++) {
+                memoryMapArray.push(new MemoryMap(pageCount - 1 - i));
+                
+                // Add row for each page
+                const row = pageTable.insertRow();
+                
+                // Virtual Index column
+                const virtualCell = row.insertCell();
+                const virtualIndex = memoryMapArray[i].virtualIndex;
+                virtualCell.textContent = decimalToBinary(indexBits, virtualIndex);
+                virtualCell.style.textAlign = "center";
+                
+                // Apply color based on algorithm
+                const virtualColor = selectedAlgorithm === "virtual_to_phys" ? "virtual-color" : "physical-color";
+                virtualCell.innerHTML = `<span class="${virtualColor}">${virtualCell.innerHTML}</span>`;
+                
+                // Physical Index column (empty initially)
+                row.insertCell();
+                
+                // Present Bit column
+                const presentCell = row.insertCell();
+                presentCell.innerHTML = '<input type="number" placeholder="0" value="0" min="0" max="1" />';
+                presentCell.style.textAlign = "center";
+                presentCell.querySelector("input").addEventListener("input", handlePresentBitInput);
+            }
+            
+            // Update UI state
+            updateUIState("create");
+        }
+
+        function handlePresentBitInput(event) {
+            const input = event.target;
+            const value = input.value;
+            
+            // Validate single digit
+            if (value.length > 1) {
+                input.value = value.slice(0, 1);
+                return;
+            }
+            
+            // Validate 0 or 1 if not submitted yet
+            if (!submitPresentBitsClicked && (value < 0 || value > 1)) {
+                alert("Please use a present bit value of 0 or 1.");
+                input.value = input.defaultValue;
+                return;
+            }
+            
+            // Prevent changes after submission
+            if (submitPresentBitsClicked && value !== presentBitArray[input.closest("tr").rowIndex]) {
+                alert("Please don't change the Present Bit values.");
+                input.value = presentBitArray[input.closest("tr").rowIndex];
+            }
+        }
+
+        function handlePhysicalBitInput(event) {
+            const input = event.target;
+            let value = input.value;
+            
+            // Validate single digit
+            if (value.length > 1) {
+                value = value.slice(0, 1);
+                input.value = value;
+            }
+            
+            // Validate range
+            if (value < 0 || value > maxPhysicalBitSize) {
+                alert(`The Physical Page Index takes values from 0 to ${maxPhysicalBitSize} with no duplicates.`);
+                input.value = input.defaultValue;
+            }
+        }
+
+        function submitPresentBits() {
+            const rows = pageTable.rows;
+            let presentBitCount = 0;
+            const requiredPresentBits = Math.pow(2, indexBits - 1);
+            let invalidInput = false;
+            
+            // Count present bits and validate inputs
+            for (let i = 1; i < rows.length; i++) {
+                const presentBit = Number(rows[i].cells[2].querySelector("input").value);
+                presentBitCount += presentBit;
+                
+                if (presentBit < 0 || presentBit > 1) {
+                    invalidInput = true;
+                }
+            }
+            
+            // Validate submission
+            if (invalidInput) {
+                alert("Please use a select bit value of either 0 or 1.");
+                return;
+            }
+            
+            if (presentBitCount !== requiredPresentBits) {
+                alert(`Please select ${requiredPresentBits} present bits to be 1.`);
+                return;
+            }
+            
+            // Store present bits and create physical bit inputs
+            presentBitArray = [0]; // First element is dummy for 1-based indexing
+            maxPhysicalBitSize = requiredPresentBits - 1;
+            
+            for (let i = 1; i < rows.length; i++) {
+                const presentBit = Number(rows[i].cells[2].querySelector("input").value);
+                presentBitArray[i] = presentBit;
+                
+                if (presentBit === 1) {
+                    rows[i].cells[1].innerHTML = '<input type="number" placeholder="0" value="0" min="0" />';
+                    rows[i].cells[1].querySelector("input").addEventListener("input", handlePhysicalBitInput);
+                }
+            }
+            
+            submitPresentBitsClicked = true;
+            updateUIState("submit_present");
+        }
+
+        function submitPhysicalBits() {
+            const rows = pageTable.rows;
+            const maxPhysicalBitValue = Math.pow(2, indexBits - 1);
+            const usedPhysicalIndices = new Set();
+            let hasDuplicates = false;
+            let overMaxValue = false;
+            
+            // Check for duplicates and invalid values
+            for (let i = 1; i < rows.length; i++) {
+                if (Number(rows[i].cells[2].querySelector("input").value) === 1) {
+                    const physicalIndex = Number(rows[i].cells[1].querySelector("input").value);
+                    
+                    if (usedPhysicalIndices.has(physicalIndex)) {
+                        hasDuplicates = true;
+                    }
+                    
+                    if (physicalIndex >= maxPhysicalBitValue) {
+                        overMaxValue = true;
+                    }
+                    
+                    usedPhysicalIndices.add(physicalIndex);
+                }
+            }
+            
+            // Validate submission
+            if (hasDuplicates || overMaxValue) {
+                alert(`Please use numbers between 0 and ${maxPhysicalBitValue - 1} with no duplicates for the Physical Page Index.`);
+                return;
+            }
+            
+            // Update memory map and display binary values
+            for (let i = 1; i < rows.length; i++) {
+                const rowIndex = i - 1; // Convert to 0-based for memoryMapArray
+                
+                if (Number(rows[i].cells[2].querySelector("input").value) === 1) {
+                    memoryMapArray[rowIndex].present = true;
+                    memoryMapArray[rowIndex].physicalIndex = Number(rows[i].cells[1].querySelector("input").value);
+                    
+                    // Display physical index in binary
+                    const physicalCell = rows[i].cells[1];
+                    physicalCell.textContent = decimalToBinary(indexBits - 1, memoryMapArray[rowIndex].physicalIndex);
+                    physicalCell.style.textAlign = "center";
+                    
+                    // Apply color based on algorithm
+                    const physicalColor = selectedAlgorithm === "virtual_to_phys" ? "physical-color" : "virtual-color";
+                    physicalCell.innerHTML = `<span class="${physicalColor}">${physicalCell.innerHTML}</span>`;
+                }
+                
+                // Display present bit in binary
+                rows[i].cells[2].textContent = rows[i].cells[2].querySelector("input").value;
+                rows[i].cells[2].style.textAlign = "center";
+            }
+            
+            // Set header text
+            headerTwo.innerHTML = "Click <u>Done</u> to reset the program.";
+            
+            // Create conversion table
+            createConversionTable();
+            
+            // Update UI state
+            updateUIState("submit_physical");
+        }
+
+        function createConversionTable() {
+            // Clear existing table
+            conversionTable.innerHTML = '';
+            
+            // Create input row
+            const inputRow = conversionTable.insertRow();
+            const inputCell = inputRow.insertCell();
+            inputCell.colSpan = 2;
+            inputCell.innerHTML = '<input type="text" class="conversion-input" placeholder="Hex Number" pattern="[0-9a-fA-F]+"/>';
+            
+            // Create result rows
+            const binaryInputRow = conversionTable.insertRow();
+            binaryInputRow.insertCell().textContent = "Input in Binary";
+            binaryInputRow.insertCell();
+            
+            const binaryResultRow = conversionTable.insertRow();
+            binaryResultRow.insertCell().textContent = "Converted in Binary";
+            binaryResultRow.insertCell();
+            
+            const hexResultRow = conversionTable.insertRow();
+            hexResultRow.insertCell().textContent = "Converted in Hex";
+            hexResultRow.insertCell();
+        }
+
+        function convertAddress() {
+            const hexInput = conversionTable.rows[0].cells[0].querySelector("input").value;
+            const resultRows = conversionTable.rows;
+            
+            // Validate hex input
+            const hexRegex = /^[0-9a-fA-F]+$/;
+            if (!hexRegex.test(hexInput)) {
+                alert("Please use proper hex digits 0-9, a-f, or A-F.");
+                return;
+            }
+            
+            // Convert hex to binary
+            let binaryInput = "";
+            for (const char of hexInput) {
+                binaryInput += hexToBinary(char);
+            }
+            
+            // Validate length
+            const expectedHexDigits = Math.ceil(totalBits / 4);
+            if (hexInput.length !== expectedHexDigits) {
+                alert(`Please use a hex number of ${expectedHexDigits} hex digits.`);
+                return;
+            }
+            
+            // Handle conversion based on algorithm
+            if (selectedAlgorithm === "virtual_to_phys") {
+                convertVirtualToPhysical(binaryInput, resultRows);
+            } else {
+                convertPhysicalToVirtual(binaryInput, resultRows);
+            }
+        }
+
+        function convertVirtualToPhysical(binaryInput, resultRows) {
+            // Check if input is too large
+            const significantBits = binaryInput.replace(/^0+/, '');
+            if (significantBits.length > totalBits) {
+                showConversionError("Not Possible - Input too Large.", resultRows);
+                return;
+            }
+            
+            // Pad with leading zeros if needed
+            binaryInput = binaryInput.padStart(totalBits, '0').slice(-totalBits);
+            
+            // Split into index and offset
+            const indexBitsBinary = binaryInput.slice(0, indexBits);
+            const offsetBitsBinary = binaryInput.slice(indexBits);
+            const decimalIndex = binaryToDecimal(indexBitsBinary);
+            
+            // Highlight corresponding row in page table
+            highlightPageTableRow(decimalIndex);
+            
+            // Format binary input with spaces every 4 bits
+            const formattedBinaryInput = formatBinaryWithSpaces(binaryInput);
+            
+            // Find physical address in memory map
+            const physicalEntry = memoryMapArray.find(entry => 
+                entry.virtualIndex === decimalIndex && entry.present
+            );
+            
+            // Display results
+            resultRows[1].cells[1].innerHTML = colorBinaryBits(formattedBinaryInput, indexBits, "virtual-color");
+            
+            if (physicalEntry) {
+                const physicalAddress = decimalToBinary(indexBits - 1, physicalEntry.physicalIndex) + offsetBitsBinary;
+                const formattedPhysicalAddress = formatBinaryWithSpaces(physicalAddress);
+                
+                resultRows[2].cells[1].innerHTML = colorBinaryBits(formattedPhysicalAddress, indexBits - 1, "physical-color");
+                resultRows[3].cells[1].textContent = binaryToHex(physicalAddress);
+            } else {
+                resultRows[2].cells[1].textContent = "Memory Mapping Missing - Page Fault.";
+                resultRows[3].cells[1].textContent = "Memory Mapping Missing - Page Fault.";
+            }
+            
+            // Center align results
+            resultRows[2].cells[1].style.textAlign = "center";
+            resultRows[3].cells[1].style.textAlign = "center";
+        }
+
+        function convertPhysicalToVirtual(binaryInput, resultRows) {
+            // Check if input is too large
+            const significantBits = binaryInput.replace(/^0+/, '');
+            if (significantBits.length > totalBits - 1) {
+                showConversionError("Not Possible - Input too Large.", resultRows);
+                return;
+            }
+            
+            // Pad with leading zeros if needed
+            binaryInput = binaryInput.padStart(totalBits - 1, '0').slice(-(totalBits - 1));
+            
+            // Split into index and offset
+            const indexBitsBinary = binaryInput.slice(0, indexBits - 1);
+            const offsetBitsBinary = binaryInput.slice(indexBits - 1);
+            const decimalIndex = binaryToDecimal(indexBitsBinary);
+            
+            // Format binary input with spaces every 4 bits
+            const formattedBinaryInput = formatBinaryWithSpaces(binaryInput);
+            
+            // Find virtual address in memory map
+            const virtualEntry = memoryMapArray.find(entry => 
+                entry.physicalIndex === decimalIndex && entry.present
+            );
+            
+            // Display results
+            resultRows[1].cells[1].innerHTML = colorBinaryBits(formattedBinaryInput, indexBits - 1, "physical-color");
+            
+            if (virtualEntry) {
+                const virtualAddress = decimalToBinary(indexBits, virtualEntry.virtualIndex) + offsetBitsBinary;
+                const formattedVirtualAddress = formatBinaryWithSpaces(virtualAddress);
+                
+                // Highlight corresponding row in page table
+                highlightPageTableRow(virtualEntry.virtualIndex);
+                
+                resultRows[2].cells[1].innerHTML = colorBinaryBits(formattedVirtualAddress, indexBits, "virtual-color");
+                resultRows[3].cells[1].textContent = binaryToHex(virtualAddress);
+            } else {
+                resultRows[2].cells[1].textContent = "Not Possible - Input too large.";
+                resultRows[3].cells[1].textContent = "Not Possible - Input too large.";
+            }
+            
+            // Center align results
+            resultRows[2].cells[1].style.textAlign = "center";
+            resultRows[3].cells[1].style.textAlign = "center";
+        }
+
+        function highlightPageTableRow(index) {
+            const rows = pageTable.rows;
+            
+            // Reset all row colors
+            for (let i = 1; i < rows.length; i++) {
+                rows[i].style.backgroundColor = "";
+            }
+            
+            // Highlight the matching row
+            for (let i = 1; i < rows.length; i++) {
+                const rowIndex = memoryMapArray[i - 1].virtualIndex;
+                if (rowIndex === index) {
+                    rows[i].style.backgroundColor = "#ccb7ff";
+                    break;
+                }
+            }
+        }
+
+        function showConversionError(message, resultRows) {
+            resultRows[1].cells[1].textContent = message;
+            resultRows[2].cells[1].textContent = message;
+            resultRows[3].cells[1].textContent = message;
+            
+            resultRows[1].cells[1].style.textAlign = "center";
+            resultRows[2].cells[1].style.textAlign = "center";
+            resultRows[3].cells[1].style.textAlign = "center";
+        }
+
+        function resetApplication() {
+            // Reset UI
+            pageTable.innerHTML = '';
+            conversionTable.innerHTML = '';
+            headerTwo.textContent = '';
+            
+            // Reset state
+            memoryMapArray = [];
+            presentBitArray = [];
+            submitPresentBitsClicked = false;
+            
+            // Enable inputs
+            virtualSizeInput.disabled = false;
+            pageSizeInput.disabled = false;
+            algorithmSelect.disabled = false;
+            
+            // Update UI state
+            updateUIState("reset");
+        }
+
+        function updateUIState(action) {
+            switch (action) {
+                case "create":
+                    createButton.style.display = "none";
+                    submitPresentButton.style.display = "block";
+                    submitPhysicalButton.style.display = "none";
+                    convertButton.style.display = "none";
+                    doneButton.style.display = "none";
+                    
+                    virtualSizeInput.disabled = true;
+                    pageSizeInput.disabled = true;
+                    algorithmSelect.disabled = true;
+                    break;
+                    
+                case "submit_present":
+                    createButton.style.display = "none";
+                    submitPresentButton.style.display = "none";
+                    submitPhysicalButton.style.display = "block";
+                    convertButton.style.display = "none";
+                    doneButton.style.display = "none";
+                    break;
+                    
+                case "submit_physical":
+                    createButton.style.display = "none";
+                    submitPresentButton.style.display = "none";
+                    submitPhysicalButton.style.display = "none";
+                    convertButton.style.display = "block";
+                    doneButton.style.display = "block";
+                    break;
+                    
+                case "reset":
+                    createButton.style.display = "block";
+                    submitPresentButton.style.display = "none";
+                    submitPhysicalButton.style.display = "none";
+                    convertButton.style.display = "none";
+                    doneButton.style.display = "none";
+                    break;
+            }
+        }
+
+        // Utility functions
+        function decimalToBinary(bits, number) {
+            return number.toString(2).padStart(bits, '0');
+        }
+
+        function binaryToDecimal(binary) {
+            return parseInt(binary, 2);
+        }
+
+        function hexToBinary(hex) {
+            const map = {
+                '0': '0000', '1': '0001', '2': '0010', '3': '0011',
+                '4': '0100', '5': '0101', '6': '0110', '7': '0111',
+                '8': '1000', '9': '1001', 'a': '1010', 'b': '1011',
+                'c': '1100', 'd': '1101', 'e': '1110', 'f': '1111',
+                'A': '1010', 'B': '1011', 'C': '1100', 'D': '1101',
+                'E': '1110', 'F': '1111'
+            };
+            return map[hex] || '0000';
+        }
+
+        function binaryToHex(binary) {
+            // Pad with zeros to make length a multiple of 4
+            const paddedBinary = binary.padStart(Math.ceil(binary.length / 4) * 4, '0');
+            let hex = '';
+            
+            for (let i = 0; i < paddedBinary.length; i += 4) {
+                const nibble = paddedBinary.substr(i, 4);
+                hex += parseInt(nibble, 2).toString(16);
+            }
+            
+            return hex;
+        }
+
+        function formatBinaryWithSpaces(binary) {
+            return binary.split('').reverse().join('')
+                .replace(/(\d{4})/g, '$1 ')
+                .split('').reverse().join('')
+                .trim();
+        }
+
+        function colorBinaryBits(binaryString, indexBits, colorClass) {
+            let result = '';
+            let bitCount = 0;
+            let indexBitsRemaining = indexBits;
+            
+            for (const char of binaryString) {
+                if (char === ' ') {
+                    result += char;
+                } else {
+                    if (indexBitsRemaining > 0) {
+                        result += `<span class="${colorClass}">${char}</span>`;
+                        indexBitsRemaining--;
+                    } else {
+                        result += char;
+                    }
+                    bitCount++;
+                }
+            }
+            
+            return result;
+        }
+
+        // Main function to handle actions
+        function take_data(action) {
+            try {
+                initializeApplication();
+                
+                if (action !== "done" && !validateInputs()) {
+                    return;
+                }
+                
+                switch (action) {
+                    case "create":
+                        createMappingTable();
+                        break;
+                        
+                    case "submit_present_bits":
+                        submitPresentBits();
+                        break;
+                        
+                    case "submit_physical_bits":
+                        submitPhysicalBits();
+                        break;
+                        
+                    case "convert":
+                        convertAddress();
+                        break;
+                        
+                    case "done":
+                        resetApplication();
+                        break;
+                }
+            } catch (error) {
+                console.error("An error occurred:", error);
+                alert("An error occurred. Please check the console for details.");
+            }
+        }
+    </script>
+</body>
+</html>
